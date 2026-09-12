@@ -82,7 +82,12 @@ FUNC_ATTR_VISIBLE void* dlsym(void* handle, const char* symbol) {
         //Compatible with cuda 12.8+ fix
         if (strcmp(symbol,"cuGetExportTable")!=0)
             pthread_once(&pre_cuinit_flag,(void(*)(void))preInit);
-        void *f = real_dlsym(vgpulib,symbol);
+        // A concrete handle identifies the library whose symbol the caller
+        // requested. Do not replace it with the redirect handle: CUDA drivers
+        // use this path for internal lookups, and redirecting back to HAMi can
+        // resolve a wrapper and recurse indefinitely.
+        void *lookup_handle = handle != NULL ? handle : vgpulib;
+        void *f = real_dlsym(lookup_handle, symbol);
         if (f!=NULL)
             return f;
     }
